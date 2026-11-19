@@ -1,0 +1,1350 @@
+\documentclass[a4paper, landscape]{article}
+
+% --- GEOMETRY & PAGE LAYOUT ---
+% Set landscape mode with very small margins to maximize space
+\usepackage[a4paper, landscape, top=0.5cm, bottom=0.5cm, left=0.75cm, right=0.75cm]{geometry}
+
+% --- FONT & LANGUAGE (BABEL) ---
+% Use fontspec for modern font handling (requires XeLaTeX/LuaLaTeX)
+\usepackage{iftex}
+
+% Use Unicode font features only for XeTeX or LuaTeX; fall back to pdfLaTeX safe fonts otherwise
+\ifPDFTeX
+  % Fallback for pdfLaTeX (no fontspec)
+  \usepackage[T1]{fontenc}
+  \usepackage[english]{babel}
+  \usepackage{lmodern}
+\else
+  \usepackage{fontspec}
+  \usepackage{xeCJK} % <-- added: Chinese support
+
+  % Use babel for language settings
+  \usepackage[english, bidi=basic, provide=*]{babel}
+  \babelprovide[import, onchar=ids fonts]{english}
+
+  % Prefer Noto Sans if available, otherwise fallback to Latin Modern or system fonts
+  \IfFontExistsTF{Noto Sans}{\setsansfont{Noto Sans}}{%
+    \IfFontExistsTF{Latin Modern Sans}{\setsansfont{Latin Modern Sans}}{\setsansfont{Arial}}%
+  }
+
+  \IfFontExistsTF{Noto Sans Mono}{\setmonofont{Noto Sans Mono}}{%
+    \IfFontExistsTF{Latin Modern Mono}{\setmonofont{Latin Modern Mono}}{\setmonofont{Courier New}}%
+  }
+
+  % Chinese font
+  \IfFontExistsTF{Noto Sans CJK SC}
+    {\setCJKsansfont{Noto Sans CJK SC}}
+    {%
+      \IfFontExistsTF{FandolHei-Regular}
+        {\setCJKsansfont{FandolHei-Regular}}
+        {\setCJKsansfont{SimHei}}
+    }
+
+  % Use sans-serif as the default family for compact layout
+  \renewcommand{\familydefault}{\sfdefault}
+  \renewcommand{\CJKfamilydefault}{\CJKsfdefault}
+\fi
+
+% --- PACKAGES ---
+\usepackage{multicol}      % For 5 columns
+\usepackage{amsmath}       % For math
+\usepackage{amssymb}       % For math symbols (like \rightarrow)
+\usepackage{booktabs}      % For the new table
+\usepackage{parskip}       % To control paragraph spacing
+\setlength{\parskip}{1pt}  % Minimal spacing between paragraphs
+\setlength{\parindent}{0pt} % No paragraph indentation
+\usepackage[dvipsnames]{xcolor} % Added for coloring
+
+% --- CUSTOM COMMANDS FOR COMPACT LAYOUT ---
+% Command for main topics, adds a small vertical break
+\newcommand{\topic}[1]{\par\medskip\textbf{#1}\par}
+
+% Command for subtopics
+\newcommand{\subtopic}[1]{\par\textbf{#1}}
+
+% Command for code/keywords
+\newcommand{\code}[1]{\texttt{#1}}
+
+% Command for math
+\newcommand{\mathsym}[1]{$#1$}
+
+% --- APPLY STYLING ---
+\definecolor{highlightcolor}{gray}{0.9} % Light gray for highlight
+
+\renewcommand{\topic}[1]{%
+  \par\smallskip\noindent
+  \colorbox{highlightcolor}{%
+    \parbox{\dimexpr\columnwidth-2\fboxsep\relax}{%
+      \textbf{#1}%
+    }%
+  }%
+  \par
+}
+
+\renewcommand{\subtopic}[1]{%
+  \par\textbf{\color{blue}{#1}}%
+}
+
+% --- DOCUMENT ---
+\begin{document}
+
+% Remove all page numbering, headers, and footers
+\pagestyle{empty}
+
+% Set font to 5pt with 6pt line spacing (leading)
+% This is extremely small, as requested.
+\fontsize{4}{5}\selectfont
+
+% Begin the 5-column layout
+\begin{multicols}{5}
+
+% --- COLUMN 1 ---
+
+\topic{Week 0 Overview + Attention}
+\par \textbf{ReLU vs. Sigmoid vs. SwiGLU：} \(\mathrm{ReLU}(x)=\max(0,x)\)，计算简单、正区间不易梯度消失，但负区间梯度为 0，可能出现 dead neuron；Sigmoid \(\sigma(x)=1/(1+e^{-x})\in(0,1)\)，适合概率/门控，但两端饱和、易梯度消失；SwiGLU 是平滑门控激活，约为 \(\mathrm{Swish}(xW_1)\odot(xW_2)\)，表达能力更强，但计算和参数更多。
+\par \textbf{CNN：} 用同一个learned kernel/filter在不同空间位置滑动，利用local connectivity + weight sharing；每个 filter 学一种局部特征，深层逐渐组合成更复杂特征。
+Convolution： kernel 在输入局部区域做加权求和；多个 kernel \(\Rightarrow\) 多个 output channels / feature maps。
+Max Pooling： 对局部区域取最大值，降低空间分辨率和计算量，并提高对小幅平移的鲁棒性，但会丢失精确位置信息。
+CNN vs. 全连接网络： CNN 利用空间局部性和参数共享，参数更少；全连接层中每个输入都连到每个神经元，对图像会产生大量参数。CNN可以绕开RNN的并行问题，同一层里所有位置可以并行计算。
+ResNet / Skip Connection： \(y=F(x)+x\)；让网络学习 residual \(F(x)\)，同时给梯度提供直接传播路径，使深层网络更容易训练。
+\par \textbf{RNN：} \(h_t=f(W_xx_t+W_hh_{t-1})\)；按时间顺序逐 token 处理，天然保留历史信息，但无法跨时间步并行，且容易出现梯度消失/爆炸和长距离依赖退化。
+LSTM：在RNN中加入input/forget/output gates和cell state，帮助长期保存信息、缓解梯度消失，但仍然是串行计算。
+序列CNN：可以并行处理不同位置并高效提取局部模式，但要建立长距离依赖通常需要堆很多层、扩大kernel或使用dilated convolution。
+Transformer： 用 self-attention 代替 recurrence，使所有位置可以直接交互并可并行训练；RNN 需要 \(O(n)\) 个 sequential operations，而 self-attention 只需 \(O(1)\)，但完整 attention 的计算复杂度为 \(O(n^2d)\)。
+为什么 Transformer 优于 RNN： RNN 必须逐 token 串行计算，而且长距离依赖较难学习；self-attention 可以直接连接远距离 token，最大路径长度更短，且训练更容易并行
+\par \textbf{Loss:} L2 / MSE： \(L=\sum_i(y_i-\hat y_i)^2\)；对大误差惩罚更强，平滑、易优化，常用于 regression。
+L1 / MAE： \(L=\sum_i|y_i-\hat y_i|\)；误差线性增长，因此比 L2 对 outlier 更鲁棒。Cross-Entropy： \(L=-\sum_k y_k\log p_k\)；one-hot 分类时 \(L=-\log p_{\text{true}}\)，即鼓励模型把高概率分配给正确类别；常用于分类和 next-token prediction。
+L0 / L1 / L2 Regularization
+- 正则化目标： \(L_{\text{total}}=L_{\text{data}}+\lambda R(w)\)；限制模型复杂度、减少 overfitting。
+- L0： \(R(w)=\|w\|_0=\#\{w_i\neq0\}\)；直接鼓励稀疏模型，但离散、不可导，很难优化。
+- L1： \(R(w)=\sum_i|w_i|\)；鼓励 sparsity，会把部分权重直接压到 0。
+- L2： \(R(w)=\sum_iw_i^2\)；平滑地惩罚大权重，通常让权重趋近于 0 而不是直接变成 0，也常对应 weight decay。
+- Dropout： 训练时随机把一部分 activation 设为 0，减少神经元之间的过度依赖，降低 overfitting；可近似看作训练很多不同子网络的 ensemble。
+- Early Stopping： 监控 validation loss / performance，当验证集不再改善时停止训练，避免模型继续拟合训练集噪声，也是一种 regularization。
+\par \textbf{SGD / Minibatch}
+- Gradient Descent： \(\theta\leftarrow\theta-\eta\nabla_\theta L\)，其中 \(\eta\) 是 learning rate。
+- SGD： 不用整个训练集计算精确梯度，而用单个样本或小部分样本估计梯度；单次更新便宜，而且梯度噪声有时有助于跳出不好的区域。
+- Mini-batch SGD：\(
+  g=\frac1B\sum_{i=1}^B\nabla_\theta L_i,
+  \theta\leftarrow\theta-\eta g
+  \)
+  大 batch 梯度更稳定、GPU 并行效率高，但更耗显存；小 batch 噪声更大，但单次更新更便宜。
+- Gradient Clipping： 限制梯度大小，防止 exploding gradients；常用 norm clipping 
+- Adagrad： 给每个参数设置自适应 learning rate：\(
+  G_{t,j}=\sum_{\tau=1}^{t}g_{\tau,j}^2,
+  \theta_{t+1,j}
+  =
+  \theta_{t,j}
+  -
+  \frac{\eta}{\sqrt{G_{t,j}+\epsilon}}g_{t,j}
+  \)
+  经常更新的参数learning rate会变小，稀疏/少见特征相对获得更大步长；缺点是 \(G_t\) 一直累积，learning rate最后可能过小。
+- RMSProp：用squared gradients的exponential moving average代替 Adagrad对全部历史梯度平方的累加，避免 Adagrad 的 learning rate 不断衰减到接近 0。Adam = Adagrad + RMSProp. AdamW ≠ Adam + ordinary L2 regularization；AdamW 的关键是 decouples weight decay from the gradient update
+- BatchNorm： 在 mini-batch 内把 activation 归一化到近似均值 0、方差 1，再学习 scale 和 shift；能稳定训练、降低对初始化的敏感度，并常允许使用更大的 learning rate。BatchNorm 后的 \(\gamma,\beta\) 让网络重新学习合适的 scale 和 shift，不会被强制限制为 mean=0, variance=1。
+\par n is the sequence length, d is the representation dimension, k is the kernel size of convolutions. Self-Attention 每层复杂度 \(O(n^2d)\)、可完全并行 \(O(1)\)、任意位置间路径长度 \(O(1)\)；RNN 为 \(O(nd^2)\)、必须串行 \(O(n)\)、长距离依赖路径 \(O(n)\)；CNN 为 \(O(knd^2)\)、可并行 \(O(1)\)、路径长度约 \(O(\log_k n)\)；restricted self-attention 将复杂度降为 \(O(rnd)\)，但最大路径长度增至 \(O(n/r)\)。
+\par Byte-level BPE：先把文本变为 bytes，再反复合并常见相邻片段。优点是几乎无 OOV；缺点是罕见语言/奇怪文本可能token 数多。BERT 使用 WordPiece
+\par Seq2Seq 的问题： 传统 encoder–decoder RNN 往往要把整个 source sentence 压缩进一个固定 hidden representation，长句时形成 bottleneck；attention 的核心改进是：生成每个 output token 时，直接关注 source 中相关位置，而不是只依赖一个压缩向量
+\par Auto-regressive： decoder 一次生成一个 token，预测 \(y_t\) 时依赖此前的 \(y_{<t}\)；因此 inference 必须把之前生成的 token 作为下一步输入。原始 Transformer decoder 也是 auto-regressive。Embedding：把离散 token ID 映射成 \(d_{\text{model}}\) 维向量；embedding table参数量为
+\(
+|\text{Vocab}|\times d_{\text{model}}
+\)
+\par \textbf{Scaled Dot-Product Attention：}
+\(
+\mathrm{Attention}(Q,K,V)=
+\mathrm{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right)V
+\)
+若 sequence length 为 \(n\)，则 \(Q,K\in\mathbb R^{n\times d_k}\), \(V\in\mathbb R^{n\times d_v}\)；\(QK^\top\in\mathbb R^{n\times n}\) 是 token-to-token attention scores，softmax 后乘 \(V\) 得 \(n\times d_v\)。除以 \(\sqrt{d_k}\) 防止 dot product 随维度增大而过大、softmax 饱和、梯度过小。    
+Q / K / V 的直觉： \(Q\)=“我在找什么”，\(K\)=“我有什么信息可供匹配”，\(V\)=“匹配后真正取走的信息”；attention 用 \(QK^\top\) 决定从各个 \(V\) 中取多少。
+\par \textbf{Encoder–Decoder Attention：}Decoder 输出提供 \(Q\)，Encoder 输出提供 \(K,V\)，使 decoder 在生成每个 token 时可以关注输入序列中的相关位置。Encoder： 每层 = Multi-Head Self-Attention + Position-wise FFN，每个 sublayer 外有 residual + norm, 对整个输入序列生成 contextualized representations。Encoder self-attention 中 \(Q,K,V\) 都来自 input. Decoder： masked self-attention + encoder-decoder attention + FFN，自回归地逐 token 生成输出；位置 \(i\) 只能依赖之前已经生成的 token。 Decoder masked self-attention 中 \(Q,K,V\) 都来自 output prefix
+\par \textbf{Multi-Head Attention：}
+\(
+\mathrm{head}_i=\mathrm{Attention}(QW_i^Q,KW_i^K,VW_i^V)
+\)
+\(\mathrm{MultiHead}(Q,K,V)=\mathrm{Concat}(\mathrm{head}_1,\ldots,\mathrm{head}_h)W^O
+\)
+不同 head 将输入投影到不同 representation subspaces，因此可同时学习不同位置关系/特征。若 \(d_{\text{model}}=512,h=8\)，则
+\(
+d_k=d_v=d_{\text{model}}/h=64.
+\)
+\(W_i^Q,W_i^K\in\mathbb R^{512\times64}\), \(W_i^V\in\mathbb R^{512\times64}\)；每个 head 输出 \(n\times64\)，8 个 head concat 后为 \(n\times512\)，再乘 \(W^O\in\mathbb R^{512\times512}\)，最终仍为 \(n\times512\)。多个 head 能同时关注不同 representation subspaces / positions；单个 head 的 weighted averaging 容易把不同关系混在一起。
+\par \textbf{Positional Encoding：}self-attention 本身没有顺序概念，因此将 positional encoding 与 token embedding 相加；二者都为 \(d_{\text{model}}\) 维。使用不同频率的 sine/cosine：
+\(
+PE_{(pos,2i)}=\sin(pos/10000^{2i/d_{\text{model}}}),
+\quad
+PE_{(pos,2i+1)}=\cos(pos/10000^{2i/d_{\text{model}}}).
+\)
+\par \textbf{Position-wise FFN：}对每个 token 独立地、用同一组参数 应用同一个 MLP：
+\(
+FFN(x)=\max(0,xW_1+b_1)W_2+b_2.
+\)
+原 Transformer 中 \(d_{\text{model}}=512\rightarrow d_{ff}=2048\rightarrow512\)；“position-wise”不是不同 position 用不同网络，而是 same FFN applied separately to every position。Transformer Block： attention + feed-forward network，并在子层外加 residual connection 和 normalization
+\par \textbf{Residual Connection / Add：}
+\(
+x+\mathrm{Sublayer}(x)
+\)
+让每层只需学习输入上的 incremental change，并给信息和梯度提供 shortcut，减少深层网络的 gradient problems
+\par \textbf{LayerNorm：}对单个 token hidden vector 的 feature dimensions 做 normalization，再进行 learned scale/shift；主要作用是稳定 activation 和 optimization。Post-Norm：论文使用
+\(
+\mathrm{LayerNorm}(x+\mathrm{Sublayer}(x))
+\)
+即先Sublayer + residual，再 LayerNorm；这就是 Post-Norm.
+Pre-Norm：
+\(
+x+\mathrm{Sublayer}(\mathrm{LayerNorm}(x))
+\)
+即先 LayerNorm，再进入 attention/FFN，最后 residual add；现代大型 Transformer 中很常见，通常让深层网络 optimization 更稳定。Pre-Norm 的 residual path 更接近 identity path，梯度可以更直接跨很多层传播
+\par Causal Masking： decoder self-attention 中将未来位置的 attention logits 设为 \(-\infty\)，softmax 后权重变成 0，从而保证位置 \(i\) 只能看到 \(\le i\) 的 token，维持 autoregressive property。Shifted Right / Decoder Training： encoder 和 decoder 一起 end-to-end 训练；训练时 decoder 输入不是自己刚预测出的结果，而是 ground-truth target 向右移一位，从而可以并行预测下一 token；推理时没有 ground truth，因此必须把 previously generated output 逐步喂回 decoder。BERT： Transformer encoder-only；使用 multi-head self-attention、positional encoding 和 masking，双向attention，训练时通过 masked-token prediction 学习 bidirectional context，即预测内部被 mask 的 token. RoBERTa： 与 BERT same Transformer architecture，使用 BPE 而不是 BERT 的 WordPiece，并在更多数据上训练。GPT 是 decoder-style / causal Transformer，只能 attend 到过去 token，并 autoregressively 做 next-token prediction。
+
+\topic{Week 1 Long Context + FlashAttention}
+\par Long context 常见于 multi-document QA、AI coding agent 阅读整个 repository、长 chain-of-thought 等场景。标准 self-attention核心瓶颈为 \(O(n^2)\)。方法主要包括 sparse/local attention（Longformer）、approximate attention（Performer）、position/context extension（RoPE/YaRN）以及优化 exact attention implementation（FlashAttention）。
+
+\par \textbf{Longformer：}用 sparse attention 替代 full self-attention，将local sliding-window attention与少量 task-motivated global attention结合；若每个 token 只 attend 宽度为 \(w\) 的邻域，则 complexity 从 full attention 的 \(O(n^2)\) 降为
+\(
+O(nw),
+\)
+当 \(w\ll n\) 时随 sequence length 近似 linear。
+
+\par \textbf{Local Sliding-Window Attention：}每个 token 只 attend 周围固定 window 内的 tokens，而不是整个 sequence；优点是把 \(O(n^2)\) 降为 \(O(nw)\)，缺点是单层中远距离 tokens 无法直接交换信息。堆疊l层后receptive field约为l * w
+
+\par \textbf{Receptive Field with Depth：}stacking multiple layers of local attention lets a token indirectly reach farther，类似 CNN 中 receptive field 随 depth 增长；因此即使每层只有 local attention，多层之后信息仍能逐步跨越较长距离传播。
+
+\par \textbf{Dilated Sliding-Window Attention：}在固定 window budget 下跳过部分 intermediate positions，只 attend 间隔位置，从而在不显著增加每个 token attention 数量的情况下让每层 reach farther、扩大 receptive field。间隔d取样，receptive field约l*d*w，在相同连接数下更远
+
+\par \textbf{Global Attention：}给少量 task-relevant tokens 全局 attention，使这些 token 可以 attend 整个 sequence，且其他 tokens 也可与其交互；例如 classification的\texttt{[CLS]}，QA的question tokens。Local attention primarily builds contextual representations，而 global attention allows the model to build full-sequence representations for prediction。local attention 和 global attention 使用 separate \(Q/K/V\) projection matrices，因为 local context modeling 与 whole-document aggregation 执行不同功能。
+
+\par Longformer = Sliding Window + optional Dilation + Global Attention
+
+\par Longformer Pretraining / LED：Longformer 可从 RoBERTa checkpoint 继续 masked-language-model pretraining，再 finetune；Longformer-Encoder-Decoder（LED）把 efficient Longformer attention 用到 encoder-decoder architecture，以支持 long-document seq2seq tasks，如 summarization。Performer: approximate full attention. Performer仍近似所有 token-pair interactions，用 FAVOR+（Fast Attention Via positive Orthogonal Random features）对 softmax attention 做 randomized kernel approximation，从而实现 approximately linear-time/space attention，
+
+\par \textbf{RoPE：}Rotary Position Embedding 根据 token position 对 query/key vector 做 position-dependent rotation：
+\(
+q_i'=R(i)q_i,\quad k_j'=R(j)k_j.
+\)
+于是
+\(
+(q_i')^\top k_j'
+=
+q_i^\top R(i)^\top R(j)k_j
+=
+q_i^\top R(j-i)k_j,
+\)
+使 attention interaction 自然依赖 relative position \(j-i\)，而不是单纯 absolute position。
+
+\par \textbf{Lost in the Middle：}研究问题不是 ``模型最多能输入多少 tokens''，而是模型能否robustly use information at arbitrary positions in a long context；论文控制 context length 和 relevant information 的 position 来测量性能变化。 Multi-Document QA Setup：输入由一个 question 和 \(k\) 个 documents 组成，其中 exactly one document contains the answer，其余 \(k-1\) 个为 distractors；保持内容不变、只移动 answer-containing document 在 context 中的位置，若模型能 robustly use long context，则性能应不应因 relevant information 的位置显著变化。\textbf{U-Shaped Performance：}模型通常在 relevant information 位于 context 开头时表现较好（primacy bias），位于结尾时也较好（recency bias），而位于中间时显著下降，larger context window does not imply robust context utilization。\textbf{Key-Value Retrieval：}即使在只需从 JSON-style key-value pairs 中找到指定 key 对应 value 的简单 synthetic retrieval task 中，一些模型仍在 relevant pair 位于 context middle 时性能下降并形成 U-shaped curve，说明问题不只是复杂 reasoning 导致。\textbf{Training Context Length：}encoder-decoder models 在输入长度处于 training-time sequence length 内时对 relevant-information position 相对 robust，但输入超过训练时见过的长度后也会出现 U-shaped performance；因此 lost-in-the-middle 不只是 nominal context-window limit 的问题。
+
+\par \textbf{Instruction Tuning：}base language models（without instruction fine-tuning）也会出现 U-shaped performance curve，因此 lost-in-the-middle 并不能简单归因于 instruction fine-tuning。
+
+\par \textbf{Query-Aware Contextualization：}把 query 放在 documents/key-value pairs 前后，让 representation 更明确地受到 query 影响；这种方法在 synthetic key-value retrieval 上可实现 near-perfect performance，但对 multi-document QA 的总体趋势影响有限. More Context Is Not Always Better. Evaluating Long-Context Models：只报告 maximum context window 不足以证明模型能有效使用 long context；更可靠的 evaluation 应改变 relevant information 在 context 中的位置，并检查 best-case 与 worst-case performance 是否接近，即性能是否对 position robust。
+
+\par \textbf{FlashAttention：}FlashAttention 不改变 attention 的数学定义，而是重新组织 exact attention 的计算：
+\(
+S=QK^\top,\qquad
+P=\mathrm{softmax}(S),\qquad
+O=PV.
+\)
+核心目标不是 approximate attention，而是通过 IO-aware implementation 减少 GPU memory traffic. 减少 FLOPs 不一定减少实际运行时间, 现代 GPU 上 attention 等操作常受 memory access 而非 arithmetic throughput 限制
+
+\par \textbf{GPU Memory Hierarchy：}GPU 中 HBM（High Bandwidth Memory）容量较大、off-chip、较慢，用于保存 model weights、activations、KV cache 等；SRAM 容量很小、on-chip、带宽高得多。CPU DRAM非常大但很慢。这里IO-aware指显式考虑不同 memory levels 的成本，核心目标是minimize reads/writes between HBM and SRAM.
+
+\par \textbf{Why Standard Attention Is Slow：}standard attention 会 materialize 完整
+\(
+QK^\top\in\mathbb{R}^{N\times N},
+\)
+将其写入 HBM，再读取进行 softmax，再读取 softmax result 与 \(V\) 相乘；long sequence 时巨大的 \(N\times N\) intermediate matrix 被反复读写，runtime bottleneck 很大程度来自 data movement。
+
+\par \textbf{Tiling：}将 \(Q,K,V\) 切分成能放入 fast SRAM 的 blocks，每次只 load 一部分数据，在 SRAM 内完成 score \(\rightarrow\) softmax \(\rightarrow\) value multiplication，再把需要的 output 写回 HBM；因此
+\(\text{the full }N\times N\text{ attention matrix is never materialized in HBM}.
+\) Q row block, KV column blocks. 每次只计算Sij=QiKjT，不需要写回HBM 扔掉
+
+\par \textbf{Online Softmax：}
+\(
+\mathrm{softmax}(x_i)=\frac{e^{x_i}}{\sum_j e^{x_j}}
+\)
+看似必须先看到整个 row；FlashAttention 使用 online/streaming softmax，在逐 block 处理时维护 running maximum \(m\) 和 normalization sum \(\ell\)，并在新 block 改变最大值时 rescale 之前的部分结果，因此可以 block-by-block 计算但仍得到 exact softmax。
+Numerically Stable Softmax：softmax 通常先减去 row maximum：
+\(
+m(x)=\max_i x_i,
+f(x)_i=e^{x_i-m(x)},
+\ell(x)=\sum_i f(x)_i,
+\)
+因此
+\(
+\mathrm{softmax}(x)=\frac{f(x)}{\ell(x)}.
+\)
+Online softmax 的关键是维护并更新这些 running statistics，而不保存完整 score row。
+
+\par \textbf{Kernel：}GPU kernel 是在 GPU 上执行某个 operation 或一组 operations 的程序。Kernel Fusion：standard implementation 可能分别执行
+\(
+\text{matmul}\rightarrow\text{mask}\rightarrow\text{softmax}\rightarrow\text{dropout}\rightarrow\text{matmul},
+\)
+各 kernel 之间经常需要把 intermediate results 写回再从 HBM 读取；FlashAttention 将这些 attention operations fuse into one GPU kernel，使 intermediate data 尽量保留在 SRAM/registers 中，减少 HBM traffic。
+
+\par \textbf{Backward Recomputation：}training backward 通常需要 forward intermediates；standard attention 会保存大的 \(N\times N\) attention matrix，而 FlashAttention 不保存它，只保存较小的 softmax normalization statistics，backward 时在 SRAM 中重新计算 attention blocks。虽然 recomputation 增加 FLOPs，但减少昂贵的 HBM reads，因此
+\(
+\text{more FLOPs}+\text{much less IO}
+\Rightarrow
+\text{lower wall-clock time}.
+\)
+
+FlashAttention extra O(n) memory
+
+\par \textbf{FlashAttention IO Complexity：}若 head dimension 为 \(d\)、SRAM size 为 \(M\)，FlashAttention HBM-access complexity 为
+\(
+O\!\left(\frac{N^2d^2}{M}\right),
+\)
+而 standard attention 至少需要
+\(
+\Omega(Nd+N^2)
+\)
+HBM accesses
+
+若主要时间花在 arithmetic operations 上，则为compute-bound，若主要时间花在 HBM reads/writes 上，则为memory-bound。
+\(
+\text{Arithmetic Intensity}
+=
+\frac{\text{number of arithmetic operations}}{\text{bytes of memory accessed}}.
+\)
+
+\par Training 时通常一次并行处理整个 sequence，因此 attention bottleneck 主要来自构造和保存 large \(n\times n\) attention intermediates；\textbf{KV Cache：}autoregressive decoding 中，每生成一个新 token，都需要让其 query attend 所有 previous tokens；为避免每一步重新计算历史 tokens 的 keys/values，模型缓存每层、每个 head、每个 previous token 的 \(K,V\)，称为 KV cache。其大小随 sequence length、batch size、number of layers 和 number of KV heads 线性增长。
+
+\par \textbf{KV Cache Scaling：}若每层有 \(H\) 个 KV heads、每个 head dimension 为 \(d_h\)、sequence length 为 \(n\)、层数为 \(L\)，忽略 batch 和 datatype 时 KV cache roughly scales as
+\(
+2H d_h nL,
+\)
+其中 factor \(2\) 来自同时存储 keys 和 values；inference 通常分为 \textbf{prefill} 和 \textbf{decode}：prefill 对完整 prompt 并行计算 hidden states 和 KV cache，更像 training forward pass，计算量大且 matrix operations 较容易利用 GPU；decode 每次只处理一个新 token，需要不断读取 growing KV cache，因此 arithmetic intensity 较低、通常更加 memory-bandwidth-bound。
+
+\par \textbf{MHA (Multi-Head Attention) KV Cache：}标准 MHA 中每个 query head 都有自己独立的 \(K,V\) projections，因此 \(H\) 个 heads 需要保存 \(H\) 组 key/value vectors：
+\(
+\text{KV cache}\propto 2H d_h nL.
+\)
+优点是每个 head 可以学习完全不同的 key/value representation、表达能力最强；缺点是 KV cache 最大、decoding memory bandwidth cost 很高。
+\textbf{MQA (Multi-Query Attention)：}保留 \(H\) 个不同的 query heads，但所有 query heads share one K/V pair；因此 KV cache 相比 MHA 缩小约 \(H\times\)：
+\(
+H\text{ query heads}, 1\text{ KV head}.
+\)
+优点是显著降低 memory/storage 和 decoding cost；缺点是所有 heads attend over identical keys/values，head-specific flexibility 降低，可能造成 noticeable quality loss。
+\textbf{GQA (Grouped-Query Attention)：}将 \(H\) 个 query heads 分成 \(G\) 组，每组共享一组 \(K,V\)：
+\(
+H\text{ query heads}, G\text{ KV heads}, 1<G<H.
+\)
+它是 MHA 与 MQA 的 compromise：相比 MHA，KV cache 约缩小 \(H/G\) 倍；相比 MQA，不同 groups 仍可学习不同 keys/values，因此通常保留更多 quality。
+\textbf{MLA (Multi-Head Latent Attention)：}MLA 选择 compress, don't share：每个 token 的 K/V information 先压缩成一个 low-rank latent vector，只把 latent 存入 cache；attention 时再将 latent up-project/reconstruct 成 head-specific information，因此不同 heads 仍可从共享 compressed representation 中提取不同内容。
+因此 cache 可比 typical GQA 更小，同时尽量恢复接近 MHA 的 expressiveness；代价是额外的 down-projection / up-projection compute，即典型的
+\(
+\text{spend extra compute to save memory}.
+\)
+Sparse Indexer for Decoding：应该 attend 哪些 previous tokens
+Tiered KV-Cache Storage：除了缩小 KV cache，还可以把 KV cache 放到更便宜、更大的 memory hierarchy
+
+\topic{Week 2 Computer Vision + Segmentation}
+\par \textbf{Object Detection：}不仅判断图像中有什么 object，还需要定位 object 在哪里；典型输出为 bounding box + class + confidence。YOLO 的核心目标是 real-time, single-pass object detection，即一次 forward pass 同时完成 classification 和 localization。
+\textbf{YOLO 核心思想：}传统 detection 方法通常先产生 candidate regions，再分别运行 classifier；YOLO instead ``frames object detection as a regression problem''，直接从整张 image pixels 回归 bounding boxes 和 class probabilities。整个 detection pipeline 是一个 single neural network，因此可以 end-to-end optimize。
+\textbf{YOLO Grid：}将输入图像划分成 \(S\times S\) grid；如果某个 object 的 center 落在一个 grid cell 内，则该 cell 负责检测该 object。每个 cell 预测 \(B\) 个 bounding boxes，以及一组 \(C\) 个 conditional class probabilities \(P(Class_i\mid Object)\)。
+每个 bounding box 预测
+\(
+(x,y,w,h,\mathrm{confidence}).
+\)
+其中 \(x,y\) 是 box center 相对于所属 grid cell 的位置，\(w,h\) 相对于整张图像；confidence 定义为
+\(
+P(Object)\cdot IoU_{\mathrm{pred}}^{\mathrm{truth}}.
+\)
+若 cell 中没有 object，则 confidence 应接近 0；若有 object，则希望 confidence 同时反映是否存在 object 和 localization quality。
+整体 output tensor 为
+\(
+S\times S\times(B\cdot5+C).
+\)
+\textbf{Class-specific Confidence：}test time 将 conditional class probability 与 bounding-box confidence 相乘：
+\(
+P(Class_i\mid Object)P(Object)IoU
+=
+P(Class_i)IoU.
+\)
+因此最终 score 同时表示该 box 属于某一 class 的置信度以及 box localization 的准确程度。
+
+\par \textbf{IoU / Intersection over Union：}
+\(
+IoU=\frac{|B_{\mathrm{pred}}\cap B_{\mathrm{gt}}|}
+{|B_{\mathrm{pred}}\cup B_{\mathrm{gt}}|}.
+\)
+IoU 衡量 predicted bounding box 与 ground-truth box 的重叠程度；\(IoU=1\) 表示完全重合，\(IoU=0\) 表示完全不重叠。
+\textbf{Responsible Bounding Box：}一个 cell 可以预测多个 boxes，但训练时只有与 ground-truth box 当前 IoU 最大的 predictor 对该 object ``responsible''，只有该 predictor 承担主要的 coordinate regression loss，从而让不同 box predictors 学习不同 box shapes/sizes。
+
+\par \textbf{YOLO Loss：}YOLOv1 使用多部分 sum-squared error，包括 bounding-box coordinates、object confidence、no-object confidence 和 class probability：
+\(
+L=L_{\mathrm{coord}}+L_{\mathrm{obj}}+L_{\mathrm{noobj}}+L_{\mathrm{class}}.
+\)
+使用 \(\lambda_{\mathrm{coord}}=5\) 增强 localization error 的重要性，使用 \(\lambda_{\mathrm{noobj}}=0.5\) 降低大量 empty boxes 对 loss 的影响。
+YOLO 不直接最小化 \(w,h\) 的平方误差，而比较
+\(
+(\sqrt w-\sqrt{\hat w})^2+
+(\sqrt h-\sqrt{\hat h})^2.
+\)
+这样相同的 absolute error 对 small boxes 的影响比 large boxes 更大。
+YOLO 在 training 和 inference 时都看到完整图像，因此 prediction 可以利用 global context；相比只观察 local region 的 region-proposal methods，更不容易把 background patch 错认成 object。
+\textbf{YOLOv1 Architecture：}原始 YOLO backbone 主要由 convolution layers 提取 spatial features，最后用 fully connected layers 产生固定大小 detection tensor。backbone 是网络中负责从原始 image 提取 general visual features 的主体部分；后续 detection head 再利用这些 feature maps 预测 classes 和 bounding boxes。现代 YOLO architecture 通常可以理解为
+\(
+\mathrm{Backbone}\rightarrow\mathrm{Neck}\rightarrow\mathrm{Detection\ Head},
+\)
+其中 backbone 提取 features，neck 融合不同 scales 的 features，head 输出 detection predictions。先以224*224在ImageNet与训练convolutional layers，再升分辨率做detection fine-tuning。\textbf{优点：}single unified network 使 YOLO 简单、fast、end-to-end，并能 global reasoning。\textbf{局限：}有localization errors，难以精确定位 small objects；grid formulation 也会限制同一 cell 中多个靠得很近的 objects 的检测能力。
+
+\par \textbf{Non-Max Suppression / NMS：}模型可能为同一个 object 产生多个重叠 bounding boxes；NMS 先保留最高-confidence box，然后删除与它 \(IoU\) 超过 threshold 的其他 boxes，并重复此过程。NMS 是 hand-designed greedy post-processing，而不是 learned component；相邻或高度重叠的真实 objects 有时也可能被错误 suppress。
+
+\par \textbf{Anchor Boxes：}预设位置/尺宽/长宽比的参考框，模型预测相对偏移，覆盖形状多，但带来大量重复predictions。Backbone是提取通用features的主体网络。 \textbf{Focal Loss：}用于缓解 foreground/background 或 easy/hard examples 的严重不平衡，典型形式为
+\(
+FL(p_t)=-(1-p_t)^\gamma\log p_t.
+\)
+当 example 已经很容易、\(p_t\) 很高时，\((1-p_t)^\gamma\) 会降低它的 loss contribution，使模型更多关注 hard examples。代价gradient可能变小，训练收敛可能变慢。semantic segmentation 对每个 pixel 进行 classification，输出与图像空间位置对应的 segmentation map。Classic CNN连续pooling丢精确位置，sliding window patch classifier极慢
+
+\par \textbf{U-Net 核心思想：}U-Net consists of a ``contracting path to capture context and a symmetric expanding path that enables precise localization''；左侧 encoder 逐渐提取更抽象的 context，右侧 decoder 恢复 spatial resolution，并通过 skip connections 恢复精细 localization information。
+\textbf{U-Net Contracting Path / Encoder：}每一级重复
+\(
+3\times3\ \mathrm{Conv}+\mathrm{ReLU}
+\rightarrow
+3\times3\ \mathrm{Conv}+\mathrm{ReLU}
+\rightarrow
+2\times2\ \mathrm{MaxPool}.
+\)
+\(2\times2\) max pooling with stride \(2\) 使 \(H,W\) 减半；每次 downsampling 后 feature channels 加倍。
+\textbf{Downsampling：}降低 spatial resolution，使后续 neurons 获得更大的 receptive field、能够利用更广的 context；代价是 precise spatial/localization information 会逐渐损失，因此 segmentation 不能只依赖 encoder。
+\textbf{Feature Channel：}一个 feature map channel 表示某种 learned feature detector 的响应；增加 channels 并不是复制原 feature map，而是使用更多 learned filters 学习不同类型的 features。U-Net downsampling 时通常 spatial size 减半而 channel 数翻倍。Bottleneck layers压缩feature dimentionality让后续计算更便宜，同时帮助融合higher-level和lower-level information。
+
+\par \textbf{U-Net Expansive Path / Decoder：}每一级先 upsample feature map，再使用 \(2\times2\) up-convolution 将 channel 数减半；随后与 contracting path 对应层的 high-resolution feature maps concatenate，再进行两次 \(3\times3\) convolution + ReLU。
+\textbf{Skip Connection：}U-Net 将 encoder 中较早、spatial resolution 较高的 feature maps 直接 copy/concatenate 到对应 decoder layer。这样 decoder 同时获得 high-level semantic/context information 和 low-level precise spatial information，从而兼顾 recognition 与 localization。不是直接相加，而是concatenate+convolution.
+
+\par \textbf{U-Net Output：}U-Net 没有 fully connected layers；最后使用 \(1\times1\) convolution 将每个 pixel 的 feature vector 映射到 class logits，再得到 pixel-wise class prediction，因此属于 fully convolutional network。
+
+\par \textbf{U-Net Weighted Loss：}touching cells 之间只有很窄的 background region，普通 pixel-wise loss 很容易忽略这些 pixels；U-Net 因此对 object boundaries 赋予更大的 loss weight：
+\(
+w(x)=w_c(x)+w_0
+\exp\left(
+-\frac{(d_1(x)+d_2(x))^2}{2\sigma^2}
+\right).
+\)
+其中 \(d_1,d_2\) 是该 pixel 到最近和第二近 object boundary 的距离，使两个 touching objects 之间的狭窄区域得到特别大的训练权重。
+
+\par \textbf{SAM / Segment Anything：}SAM 将 segmentation 定义为 promptable segmentation：给定 image 和 segmentation prompt，模型输出一个 valid segmentation mask；目标是通过 prompting zero-shot transfer 到新的 image distributions 和 segmentation tasks。SAM Prompt：主要包括 point、bounding box 和 mask，论文也探索 text prompt。prompt 可以有歧义，因此模型必须能够处理 ambiguous prompts。
+
+\par \textbf{SAM Architecture：} Image Encoder + Prompt Encoder -> Lightweight Mask Decoder -> Mask.
+昂贵的 image encoder 对每张 image 只运行一次；同一个 image embedding 可以被多个不同 prompts 重复使用，因此 interactive segmentation 可以非常快。
+\textbf{SAM Image Encoder：}使用 MAE-pretrained Vision Transformer (ViT) 处理高分辨率 image，将 image 转换成 dense image embedding；MAE pretraining 通过遮住大量 image patches、让模型重建 missing content 来学习 visual representations。
+\textbf{SAM Sparse Prompt Encoder：}points 和 boxes 首先通过 positional encoding 表示其空间位置，再加上表示 prompt type 的 learned embedding，例如 foreground point 和 background point 使用不同 learned embeddings：
+\(
+e_{\mathrm{prompt}}
+=
+e_{\mathrm{position}}+e_{\mathrm{type}}.
+\)
+position 告诉模型 ``在哪里''，learned embedding 告诉模型 ``这个位置是什么意思''。
+\textbf{SAM Dense Prompt Encoder：}mask 属于 dense prompt，因为它对大量 spatial locations 都提供信息；mask 通过 convolution 得到与 image embedding spatially aligned 的 embedding，再与 image embedding element-wise add。
+\textbf{SAM Mask Decoder：}mask decoder 输入 image embedding、prompt embeddings 和 output token；通过 prompt self-attention 以及 prompt-to-image / image-to-prompt 双向 cross-attention 融合两类信息，之后 upsample image embedding，并用由 output token 产生的 dynamic linear classifier 计算每个 image location 的 foreground probability。
+\textbf{Foreground / Background：}foreground 表示 prompt 希望 segment 的 target object pixels，background 表示不属于该 target 的 pixels。
+\textbf{SAM Ambiguity-aware Prediction：}由于一个 prompt 可能存在多个合理 interpretation，SAM 对 ambiguous prompt 可以预测 multiple masks，而不是强迫模型输出所有合理答案的 average；训练时只对与 ground truth 最匹配的 predicted mask 计算主要 mask loss。
+
+\par \textbf{SAM Mask Loss：}SAM 使用 focal loss 和 Dice loss 的组合：
+\(
+L_{\mathrm{mask}}
+=
+L_{\mathrm{focal}}+L_{\mathrm{dice}}.
+\)
+focal loss 重点学习 difficult foreground/background pixels；Dice loss 直接优化 predicted region 与 ground-truth region 的 overlap。
+\textbf{Dice Score / Dice Loss：}
+\(
+Dice(P,G)=
+\frac{2|P\cap G|}{|P|+|G|},
+L_{\mathrm{Dice}}=1-Dice.
+\)
+Dice 更关心两个 segmentation regions 整体是否重合，因此在 foreground pixels 相对 background 很少时，比单纯 pixel accuracy 更合适。
+
+\par \textbf{SAM Data Engine：}训练数据通过三阶段生成：assisted-manual stage 中 annotators 用 foreground/background clicks 配合 SAM 标注 masks；semi-automatic stage 中模型先生成 confident masks，人工补充遗漏 objects；fully automatic stage 中模型自动产生大量 masks。
+
+\par \textbf{SAM 3 / Promptable Concept Segmentation：} Promptable Concept Segmentation (PCS) 给定 image/video 和 concept prompt，detect、segment，并在 video 中 track 所有 matching instances。concept 可以由 short noun phrase、image exemplar 或二者共同指定，text prompt 被限制为简单 noun phrases。SAM 的 point/box/mask prompt 通常告诉模型一个具体 object 在哪里；SAM 3 的 concept prompt 是 global 的，要同时完成 recognition + localization + segmentation。
+\textbf{SAM 3 Architecture：}SAM 3 由共享 vision encoder 的 image-level detector 和 memory-based video tracker 构成。detector 负责在 image 中找到所有 matching concepts；tracker 负责在 video frames 中传播 masks 并保持 object identity。
+SAM 3 Detector：detector 基于 DETR-style architecture，并 conditioned on text、geometry 和 image exemplars；它需要解决 open-vocabulary detection，即识别训练 label set 之外、由 prompt 动态指定的 visual concepts。
+SAM 3 Presence Head：SAM 3 将 recognition 和 localization 解耦：独立 presence head 判断
+\(
+\text{``Is this concept present?''}
+\)
+而 detector localization 部分处理
+\(
+\text{``Where are its instances?''}
+\)
+这种 decoupling 对 difficult negative concepts 尤其有效。
+Hard negative 是与 target concept 很相似、但实际上不满足 prompt 的 example；加入 hard negatives 可迫使模型学习更精确的 semantic decision boundary，而不是只依靠粗略 visual similarity。
+\textbf{SAM 3 Video Tracking：}detector 应当 identity-agnostic，即只寻找所有 matching objects；tracker 则必须 identity-aware，区分不同 instances 并保持它们跨 frames 的 identity。
+\textbf{SAM 3 Data Engine：}采用 human-and-model-in-the-loop pipeline；MLLM 可以作为 AI annotator 生成 noun phrases 和 hard negatives，也可以作为 AI verifier 检查 mask quality/exhaustivity；human annotators 主要集中修复困难错误，从而提高 annotation throughput。
+
+\par \textbf{Spatial vs. Channel Attention：}spatial attention 在 location dimension 上选择 ``where''，即同一位置的 channels 一起增强/抑制；channel attention 在 feature dimension 上选择 ``what''，即同一个 channel 在所有 locations 一起增强/抑制。二者可以 sequential 或 parallel 使用。
+\textbf{Parallel Spatial Attention：}``parallel'' 的核心意思是 attention branch 与部分普通 convolution/feature-processing branch 并行处理 features，之后再融合，而不是让所有 features 必须串行经过 attention；这样既保留原始/local convolution information，又用 spatial attention 强调 informative locations。
+\par \textbf{Transposed Convolution / Up-convolution：}用于把 low-resolution feature map learnably 放大 spatial resolution；可以把普通 convolution 看成将 input positions 聚合到 output，而 transposed convolution 使用 convolution 的 transpose connectivity，把一个 input activation ``spread'' 到多个 output locations。是有 learnable kernel parameters 的 upsampling operation。increasing the stride increases both the height and width of the output. decoder 不只是 ``放大图像''，而是在恢复 resolution 的同时学习如何组合 semantic 和 localization information。
+
+\par \textbf{TransUNet：}TransUNet ``replaces part of U-Net's CNN encoder with a transformer, keeps the skip-connection decoder''；Transformer encoder 用 self-attention 捕获 CNN 较难直接建模的 long-range/global context，而 U-Net-style decoder 和 skip connections 继续恢复精细 spatial detail。
+Transformer 将 image 划成 patches/tokens 后可以获得 global relationships，但 patch-level representation 会损失部分 fine spatial detail；skip connections 把 encoder 较高 resolution 的 local features 直接传给 decoder，因此可以同时利用global context from Transformer + fine localization from U-Net. (TransUNet用Transformer捕获global context，同时保留UNet skip connections，把encoder的高分辨率空间细节传给decoder)
+
+\par \textbf{SAM 2 Masklet：}SAM 2 的任务从 single-image mask 扩展为 video 中的 spatiotemporal mask。用户可以在任意 video frame 上提供 points、boxes 或 masks，定义一个 segment of interest，模型需要预测该 object 跨多个 frames 的 mask sequence，称为
+\(
+\text{masklet}.
+\)
+预测后还可以在后续 frames 加新 prompts 进行 iterative refinement。
+mask 描述一个 object 在 单个 frame 中哪些 pixels 属于它；masklet 描述同一个 object 在 整个时间序列 中的 masks，因此同时包含 spatial segmentation 和 temporal consistency / tracking。
+\textbf{SAM 2 Memory Attention：}Memory Attention 用过去 frames 的 features、past predictions 以及新的 prompts 来 condition 当前 frame features。SAM 2 stack \(L\) 个 transformer blocks；每个 block 执行
+\(
+\mathrm{SelfAttention}
+\rightarrow
+\mathrm{CrossAttention\ to\ Memory}
+\rightarrow
+\mathrm{MLP}.
+\)
+Self-attention 建模当前 frame 内部关系，cross-attention 从 memory bank 中读取过去 video information。
+\textbf{SAM 2 Memory Encoder：}Memory encoder 将当前 predicted mask 先通过 convolutional module downsample，再与 image encoder 得到的 unconditioned frame embedding 做 element-wise sum，随后经过 lightweight convolution layers 融合：
+\(
+M_t
+=
+f_{\mathrm{conv}}
+\left(
+E_t+
+\mathrm{Downsample}(\hat m_t)
+\right).
+\)
+得到的 \(M_t\) 成为后续 frames 可以 cross-attend 的 memory representation。
+\textbf{SAM 2 Memory Bank：}memory bank 保存 target object 的 past predictions，并维护 FIFO queues：最多 \(N\) 个 recent-frame memories，以及最多 \(M\) 个 prompted-frame memories；两类 memories 都以 spatial feature maps 存储。recent frames 提供最近 temporal context，prompted frames 保留用户明确纠正过的高价值 information。
+ImageEncoder->MemoryAttention->MaskDecoder->MemoryEncoder->MemoryBank.
+当前 frame 读取旧 memory 得到 mask，新 mask 再被编码进入 memory，形成 recurrent-like temporal processing loop。
+如果为每个 object 独立维护 memory / inference state，则处理 \(K\) 个 objects 时 cost 会近似随 \(K\) 线性增长
+
+\par \textbf{Scaling：}核心问题不是单纯 ``模型越大越好''，而是在 fixed compute budget 下决定 compute 应分配给 model size/ traning-date quantity/ training-data quality
+因此 scaling 同时涉及 parameters、data、compute 和 data curation。
+\textbf{Scaling Law：}经验上 model performance / loss 与 model size、dataset size 和 compute budget 之间呈近似 power-law relationship；常写为
+\(
+L(C)\approx L_\infty + aC^{-\alpha},
+\)
+因此在 log-log 坐标中，loss 与 compute 近似线性：
+\(
+\log(L-L_\infty)
+=
+\log a-\alpha\log C.
+\)
+这意味着增加 compute 通常带来 predictable but diminishing improvements，而不是突然饱和。随着 compute budget 增加，model size 和 training data 应近似按相同比例增加，而不是只把 parameters 做大. 当模型已经很大时，继续堆 parameters 未必比改善 training data 更有效。
+
+
+% --- COLUMN 2 ---
+
+\topic{Week 3 Diffusion Model + VLM}
+
+\par \textbf{Visual Grounding：}建立 language concepts 与 visual objects/regions 之间的对应关系. ViLBERT 的核心思想是把 visual grounding 从某个特定 downstream task 中单独学习出来，变成一种可以 pretrain and transfer 的能力。
+
+\par \textbf{CLIP：}Contrastive Language--Image Pre-training；不再训练模型预测固定的一组 object categories，而是从大量 \((image,text)\) pairs 中学习 image--text semantic alignment，使 natural language 本身成为 supervision，从而支持 zero-shot transfer。
+\textbf{CLIP Dual Encoder：}CLIP 有独立的 image encoder \(f_I\) 和 text encoder \(f_T\)：
+\(
+I_i=\frac{f_I(x_i)}{\|f_I(x_i)\|},
+T_j=\frac{f_T(t_j)}{\|f_T(t_j)\|}.
+\)
+两种 modality 分别编码，直到最终 embedding space 才通过 similarity 交互，因此属于 dual encoder / late fusion architecture。
+\textbf{CLIP Similarity：}对 normalized image/text embeddings 使用 cosine similarity：
+\(
+s_{ij}=\frac{I_i^\top T_j}{\tau},
+\)
+其中 \(I_i^\top T_j\) 是 cosine similarity，\(\tau\) 是 learned temperature，用来控制 softmax distribution 的 sharpness。
+\textbf{CLIP Contrastive Learning：}给定 batch 中 \(N\) 个正确的 image--text pairs，构造 \(N\times N\) similarity matrix；diagonal 的 \(N\) 个 pair 是 positives，其余 \(N^2-N\) 个组合是 negatives。目标是 increase similarity of correct pairs and decrease similarity of incorrect pairs，而不是直接生成 caption。
+\textbf{CLIP Loss：}分别进行 image-to-text 和 text-to-image classification，再取平均：
+\(
+L=\frac12\left[
+CE(s,\text{diag labels})
++
+CE(s^\top,\text{diag labels})
+\right].
+\)
+batch 越大，一个 example 可以比较的 negative examples 越多，因此 contrastive learning 通常受益于 large batch size。
+\textbf{CLIP Image Encoder：}论文使用 modified ResNet 或 Vision Transformer (ViT)。modified ResNet 将最后的 global average pooling 替换为 attention pooling，使模型可以根据 learned query 对不同 spatial image features 加权聚合。
+\textbf{CLIP Text Encoder：}使用 Transformer 编码 text；最高层 \([EOS]\) token 对应的 hidden state 被作为整段 text representation，然后通过 linear projection 和 normalization 映射到 shared embedding space。
+\textbf{CLIP Shared Embedding Space：}image encoder 和 text encoder 将两种 modality 映射到同一个 vector space；语义相符的 image/text embeddings cosine similarity 应高，不相关 pair 的 similarity 应低。因此 shared space 中的 geometric distance 表达跨模态 semantic correspondence。
+
+\par \textbf{CLIP Zero-shot Classification：}对每个 candidate class \(c\) 构造 natural-language prompt，例如 ``a photo of a \(c\)''，得到 text embedding \(T_c\)，然后把输入 image embedding \(I\) 与所有 \(T_c\) 比较：
+\(
+p(y=c\mid x)
+=
+\frac{\exp(s(I,T_c))}
+{\sum_k\exp(s(I,T_k))}.
+\)
+不需要在 target dataset 上重新训练 classifier，因此称为 zero-shot transfer。传统 classifier 学固定 class weight vectors，而 CLIP 可以用 natural-language class descriptions 动态产生这些 vectors；因此 text encoder 可以理解为根据语言描述生成 zero-shot linear classifier weights。
+\textbf{CLIP Prompt Engineering：}直接输入 class name（如 ``dog''）可能与 CLIP pretraining 时看到的 natural captions distribution 不一致，因此使用 ``a photo of a dog'' 等完整 prompt 通常效果更好；也可以 ensemble 多个 prompt templates。
+\textbf{CLIP 的局限：}CLIP 的 image/text encoders 在中间层不发生 cross-modal interaction，只比较最终 global embeddings，因此适合 retrieval / zero-shot classification，但对于需要细粒度 token--region reasoning 的任务不如 cross-attention architecture 自然。
+
+\par \textbf{ViLBERT：}Vision-and-Language BERT；一种 two-stream multimodal Transformer，visual stream 和 linguistic stream 分别处理 image 与 text，但在中间通过 co-attentional Transformer layers 交换信息，从而学习 task-agnostic joint visiolinguistic representations。
+\textbf{Why Two Streams：}vision 与 language 的结构和 processing needs 不同，因此 ViLBERT 不从一开始把二者混在同一个 sequence 中；两种 modality 可以具有不同 network depth，并只在 selected layers 通过 co-attention 进行 sparse cross-modal interaction。
+\textbf{ViLBERT Text Representation：}text side 基于 BERT；一个 token 的 input representation 是
+\(
+e_i=e_i^{token}+e_i^{position}+e_i^{segment},
+\)
+并使用 \([CLS]\)、\([SEP]\)、\([MASK]\) 等 special tokens。
+\textbf{ViLBERT Visual Representation：}利用 pretrained object detector 提取 salient image regions；每个 region 由 visual feature 与 spatial/location information 表示，然后把这些 region representations 当作 visual tokens 输入 Transformer。
+
+\par \textbf{ViLBERT Co-Attention：}核心是 ``exchanging key-value pairs in multi-headed attention''：visual queries attend to linguistic keys/values，同时 linguistic queries attend to visual keys/values：
+\(
+H_V'
+=
+\mathrm{Attention}(Q_V,K_L,V_L),
+H_L'
+=
+\mathrm{Attention}(Q_L,K_V,V_V).
+\)
+这样 language information 可以改变 visual representations，visual information 也可以改变 linguistic representations。
+\textbf{Self-Attention vs Co-Attention：}self-attention 负责 modality 内 reasoning，例如 words 之间或 image regions 之间的关系；co-attention 负责 cross-modal grounding。ViLBERT 同时保留两者，而不是所有层都做 co-attention。如果只有 co-attention，每一步 representation update 都依赖另一 modality；保留 ordinary self-attention layers 可以让每种 modality 先学习自身 internal structure，再在必要位置进行 cross-modal interaction。
+
+\par \textbf{ViLBERT Masked Multimodal Modeling：}类似 BERT masked-language modeling，但同时应用于 language 和 vision；mask 一个 word 或 image region，再利用剩余 text + image context 预测其内容，使模型学习 intra-modal 与 cross-modal dependencies。
+\textbf{ViLBERT Image--Text Alignment Task：}另一个 pretraining objective 是预测 image 与 text segment 是否 correspond；正例是真实 image-caption pair，负例是不匹配的 pair，从而训练 global multimodal alignment。
+\textbf{ViLBERT Transfer：}pretrained ViLBERT backbone 只需 minor task-specific modifications 就可以 transfer 到 VQA、Visual Commonsense Reasoning、Referring Expressions 和 caption-based image retrieval 等任务。
+
+\par \textbf{Early / Intermediate / Late Fusion：}Early fusion：较早把不同 modalities 合成统一 token sequence；Intermediate fusion：先分别处理，再在中间 layers 交互，ViLBERT 属于这一类；Late fusion：两种 modality 基本独立编码，到最后才结合，CLIP 属于这一类。
+
+\par \textbf{Generative Model：}学习 observed data 的 probability distribution，使模型能够生成来自相同 distribution 的新 samples。\textbf{Autoencoder：}encoder 把高维 input 压缩成 latent representation：
+\(
+z=E(x),
+\)
+decoder 再重建：
+\(
+\hat x=D(z).
+\)
+训练时通过 reconstruction loss 使 \(D(E(x))\approx x\)；latent \(z\) 应保存重要 information，同时去掉 input 中的 redundancy。
+\textbf{Latent Space：}encoder 学到的 compact representation space；不是原始 pixel space，而是用较低维向量表示 input 中最重要的 semantic / perceptual features，因此在 latent space 上进行 computation 通常比直接处理所有 pixels 更便宜。
+
+\par \textbf{VAE / Variational Autoencoder：}普通 autoencoder 对每个 \(x\) 学一个 deterministic latent vector \(z\)，而 VAE ``learns a latent distribution, instead of a latent representation''：
+\(
+q_\phi(z\mid x)
+=
+\mathcal N(\mu(x),\sigma^2(x)I).
+\)
+encoder 输出 \(\mu,\sigma\)，再从这个 distribution sample \(z\) 后交给 decoder。
+\textbf{VAE Reparameterization Trick：}
+\(
+z=\mu+\sigma\odot\epsilon,
+\qquad
+\epsilon\sim\mathcal N(0,I).
+\)
+把 random sampling 写成 deterministic function of \(\mu,\sigma,\epsilon\)，使 gradients 可以通过 \(\mu,\sigma\) backpropagate。
+\textbf{VAE Loss：}
+\(
+L
+=
+L_{\mathrm{reconstruction}}
++
+D_{KL}
+\big(q_\phi(z\mid x)\,\|\,\mathcal N(0,I)\big).
+\)
+Reconstruction term 让 decoded image 接近 input；KL term 让 latent distributions 接近 standard Gaussian prior，使 latent space smooth、continuous 且容易 sampling。
+\textbf{Why VAE Can Generate：}因为训练时要求
+\(
+q_\phi(z\mid x)\approx\mathcal N(0,I),
+\)
+所以 inference 时可以直接 sample
+\(
+z\sim\mathcal N(0,I)
+\)
+再通过 \(D(z)\) 生成新 image，而不一定需要对应某个 input image。
+
+\par \textbf{Diffusion Model：}训练时逐渐向真实 data 加 Gaussian noise，并训练 neural network 学会反向 denoise；generation 时从 pure Gaussian noise 开始，通过多步 denoising 得到新 sample。可以理解为 ``a sequential application of denoising autoencoders''。
+
+\par \textbf{Forward Diffusion / Noising Process：}逐步向 \(x_{t-1}\) 添加少量 Gaussian noise：
+\(
+q(x_t\mid x_{t-1})
+=
+\mathcal N
+\left(
+\sqrt{1-\beta_t}\,x_{t-1},
+\beta_tI
+\right),
+\)
+其中 \(\beta_t\) 控制第 \(t\) 步加入多少 noise；经过足够多 steps 后
+\(
+x_T\approx\mathcal N(0,I).
+\)
+
+\par \textbf{Diffusion Noise Schedule：}定义
+\(
+\alpha_t=1-\beta_t,
+\bar\alpha_t=\prod_{s=1}^{t}\alpha_s,
+\)
+则不需要真的一步步执行 forward process，可以直接从 \(x_0\) sample 任意 timestep：
+\(
+x_t
+=
+\sqrt{\bar\alpha_t}x_0+
+\sqrt{1-\bar\alpha_t}\epsilon,
+\epsilon\sim\mathcal N(0,I).
+\)
+
+\par \textbf{Diffusion Training Objective：}随机 sample clean image \(x_0\)、timestep \(t\) 和 Gaussian noise \(\epsilon\)，构造 noisy \(x_t\)，让 neural network 预测加入的 noise：
+\(
+L_{\mathrm{simple}}
+=
+\mathbb E_{x_0,t,\epsilon}
+\left[
+\|\epsilon-\epsilon_\theta(x_t,t)\|_2^2
+\right].
+\)
+因此模型通常不是直接预测最终 clean image，而是学习 ``given this noise level, what noise should be removed?''。
+
+\par \textbf{Reverse Diffusion / Sampling：}generation 从
+\(
+x_T\sim\mathcal N(0,I)
+\)
+开始，然后反复执行 learned reverse denoising：
+\(
+x_T\rightarrow x_{T-1}\rightarrow\cdots\rightarrow x_1\rightarrow x_0.
+\)
+因为需要 sequential model evaluations，diffusion inference 通常比 single-pass generator 慢。
+
+\par \textbf{Timestep Embedding：}同一个 denoising network 要处理从 nearly-clean 到 almost-pure-noise 的不同 \(x_t\)，因此把 timestep \(t\) 编码成 embedding 并输入网络，让模型知道当前 noise level。
+\textbf{Why Diffusion Is Expensive：}pixel-space diffusion 每一步都需要在完整 high-dimensional RGB image 上运行 network；training 需要 repeated forward/backward evaluations，inference 也需要 tens 到 hundreds 甚至更多 sequential denoising steps，因此 computation 很大。
+
+\par \textbf{Latent Diffusion Model (LDM)：}不是直接在 RGB pixels 上做 diffusion，而是先用 pretrained autoencoder：
+\(
+z_0=E(x),
+\)
+然后在 latent space \(z\) 中执行 diffusion；最终 denoise 得到 \(z_0\) 后：
+\(
+\hat x=D(z_0).
+\)
+这样 diffusion network 处理的是更小的 latent representation，而不是所有 pixels，因此显著降低 training / inference computation。
+Pixel DM：
+\(
+x_t\in\mathbb R^{H\times W\times3}
+\)
+直接在 RGB space denoise；LDM：
+\(
+z_t\in\mathbb R^{h\times w\times c},
+ h<H,\;w<W,
+\)
+在 compressed latent space denoise，再通过 decoder 恢复 pixel image。
+
+\par \textbf{Perceptual Compression：}LDM 先用 autoencoder 去掉大量 perceptually irrelevant / high-frequency information，同时尽量保留 visually important details；这样 diffusion model 不需要花大量 compute 去建模几乎看不见的 pixel-level details。
+\textbf{Semantic Compression：}在 autoencoder 完成 perceptual compression 后，diffusion model 在 latent space 中学习更 high-level 的 semantic / conceptual composition，例如 objects、layout、style 等。
+\textbf{LDM Compression Trade-off：}latent 压缩太少则 compute reduction 不明显；压缩太强则丢失 reconstruction details。LDM 的设计目标是在 complexity reduction 与 detail preservation 之间找到 near-optimal trade-off。
+
+\par \textbf{Stable Diffusion High-level Pipeline：}
+\(
+\mathrm{text}
+\rightarrow
+\mathrm{text\ encoder}
+\rightarrow c,
+\)
+\(
+x
+\xrightarrow{E}
+z_0
+\xrightarrow{\mathrm{add\ noise}}
+z_t
+\xrightarrow[\mathrm{condition}\ c]{\mathrm{U\!-\!Net}}
+\hat\epsilon,
+\)
+重复 denoising 得到 \(z_0\)，再
+\(
+D(z_0)\rightarrow\mathrm{RGB\ image}.
+\)
+
+\par \textbf{U-Net in Diffusion：}U-Net 接收 noisy latent/image \(z_t\)、timestep embedding 和 conditioning information；downsampling path 逐渐降低 spatial resolution、提取更 global features，upsampling path 恢复 spatial resolution，skip connections 将对应 resolution 的 earlier features 直接传给 decoder side，从而保留 local/fine-grained details。
+\textbf{Text Conditioning：}text prompt 先由 text encoder 转换为 token embeddings \(c\)；这些 text embeddings 本身不会直接生成 pixels，而是作为 conditioning information，在每一步 denoising 中告诉 model 应朝什么 semantic direction 去除 noise。
+\textbf{Cross-Attention in Latent Diffusion：}visual/latent representations 提供 queries，conditioning text embeddings 提供 keys 和 values. 因此不同 spatial locations 可以 attend 到 prompt 中不同 words，使 text information 直接控制 denoising。
+conditioning 不需要与 image/latent 具有相同 spatial dimensions；只要先 encode 成 token representations，就可以作为 \(K,V\) 输入 cross-attention，因此同一 LDM architecture 可以接受 text、class labels、bounding boxes、layouts 等不同 conditioning inputs。
+
+Diffusion model 最终产生的是 latent \(z_0\)，不是 RGB pixels；decoder \(D\) 将
+\(
+z_0\rightarrow x.
+\)
+若删除 decoder，仍然可以得到 latent representation，但无法直接得到最终可观看的 RGB image。
+Autoencoder stage 是 reconstruction task：
+\(
+D(E(x))\approx x.
+\)
+但 diffusion stage 不是要求从 noise 最后还原某一张特定 training image；它学习 latent data distribution，generation 从 random noise 开始，只需要生成 plausible samples satisfying the condition，而不是与某个原始 \(x\) 相等。
+
+\par \textbf{Guidance：}在 diffusion sampling 过程中改变 denoising direction，使生成结果更符合某个 condition；diffusion formulation 的优点之一是可以利用 guiding mechanism 控制 generation，而不需要为每一个新的 prompt 重新训练 generator。
+\textbf{Classifier-Free Guidance (CFG)：}训练时有一部分 examples 故意去掉 condition，因此同一个 model 同时学会 unconditional prediction
+\(
+\epsilon_\theta(x_t,\varnothing)
+\)
+和 conditional prediction
+\(
+\epsilon_\theta(x_t,c).
+\)
+sampling 时组合二者：
+\(
+\hat\epsilon
+=
+\epsilon_\theta(x_t,\varnothing)
++
+w\left[
+\epsilon_\theta(x_t,c)
+-
+\epsilon_\theta(x_t,\varnothing)
+\right].
+\)
+
+\par \textbf{CFG Intuition：}
+\(
+\epsilon_\theta(x_t,c)-\epsilon_\theta(x_t,\varnothing)
+\)
+近似表示 ``condition \(c\) 希望 denoising direction 改变多少''；guidance scale \(w\) 放大这个方向。较大的 \(w\) 通常提高 prompt adherence / sample fidelity，但过大会减少 diversity，甚至产生 artifacts。
+
+\par \textbf{DALL-E 2 / unCLIP：}DALL-E 2 不直接从 text embedding 一步生成 image，而是显式先预测 CLIP image latent：
+\(
+\mathrm{text}
+\rightarrow
+\mathrm{CLIP\ text\ embedding}
+\rightarrow
+\mathrm{prior}
+\rightarrow
+\mathrm{CLIP\ image\ embedding}
+\rightarrow
+\mathrm{diffusion\ decoder}
+\rightarrow
+\mathrm{image}.
+\)
+论文把整个 architecture 称为 unCLIP，因为 generation 可以理解为 ``invert the CLIP image encoder''。
+
+\par \textbf{DALL-E 2 Prior：}prior 学习
+\(
+P(z_i\mid y),
+\)
+其中 \(y\) 是 caption / text condition，\(z_i\) 是对应 image 的 CLIP image embedding；即先把 language semantics 转换成一个 plausible image representation，而不是直接预测 pixels。
+CLIP text embedding 和 CLIP image embedding 虽然位于 shared semantic space、相互对齐，但并不是完全相同的 representations/distributions；prior 学习
+\(
+\mathrm{text\ representation}\rightarrow
+\mathrm{possible\ image\ representation},
+\)
+再让 image decoder 处理它熟悉的 image embedding。
+\textbf{DALL-E 2 Diffusion Prior：}论文比较 autoregressive prior 与 diffusion prior，发现 diffusion prior 更 computationally efficient，并得到更好的 sample quality；因此 production-style unCLIP 使用 diffusion prior。
+
+\par \textbf{DALL-E 2 Decoder：}diffusion decoder 学习
+\(
+P(x\mid z_i,y),
+\)
+即根据 CLIP image embedding \(z_i\)（以及可选 text condition \(y\)）产生 actual image \(x\)。
+\textbf{DALL-E 2 Probability Factorization：}整个 text-to-image model 可写为
+\(
+P(x\mid y)
+=
+P(x,z_i\mid y)
+=
+P(x\mid z_i,y)P(z_i\mid y).
+\)
+先由 prior sample image embedding \(z_i\)，再由 decoder sample actual image \(x\)。
+
+\par \textbf{Why DALL-E 2 Is Stochastic：}同一句 caption 可以对应很多不同但正确的 images，因此 prior 不应该学习唯一 deterministic mapping，而是
+\(
+z_i\sim P(z_i\mid y).
+\)
+同样，一个 CLIP image embedding 并不保存所有 pixel-level details，因此 decoder 也可以从同一个 \(z_i\) 生成多个 semantically similar images。
+\textbf{Image Variation in DALL-E 2：}给定 input image：
+\(
+x\rightarrow E_{\mathrm{CLIP}}(x)=z_i,
+\)
+然后重复 sample
+\(
+x'\sim P(x\mid z_i).
+\)
+因为 CLIP embedding 保存主要 semantics/style、但丢弃一些 non-essential details，因此不同 samples 能保持 overall meaning/style，同时改变 pose、background、minor details 等。
+
+\par \textbf{Language-guided Image Manipulation：}CLIP 的 image 和 text 位于 joint embedding space，因此可以构造 semantic direction，例如
+\(
+d=
+E_T(\text{``smiling''})
+-
+E_T(\text{``neutral''}),
+\)
+将 image embedding 沿 \(d\) 移动后再 decode，就可以进行 zero-shot language-guided semantic editing。
+
+\par \textbf{DALL-E 2 Upsampling：}base diffusion decoder 先生成低分辨率 image，再使用 additional diffusion upsamplers：
+\(
+64\times64
+\rightarrow
+256\times256
+\rightarrow
+1024\times1024.
+\)
+upsamplers 主要负责增加 spatial resolution 和 fine detail，而不是重新决定 high-level semantics。
+
+
+\topic{Week 4 Agentic AI}
+\par \textbf{RAG (Retrieval-Augmented Generation)：}模型先从外部文档库 retrieve relevant documents，再把 retrieved context 连同 query 一起交给 generator 生成答案：
+\(
+x \rightarrow \mathrm{Retriever} \rightarrow z_1,\ldots,z_K \rightarrow \mathrm{Generator} \rightarrow y.
+\)
+核心思想是让模型访问训练参数之外、可更新的 external knowledge；RAG 可以减少仅靠 parametric memory 带来的 outdated/missing knowledge，但 不能保证消除 hallucination，因为 generator 仍可能误读、忽略或错误组合 retrieved information。
+
+\par \textbf{DPR Retriever：}原始 RAG 使用 Dense Passage Retrieval (DPR)，分别用两个 BERT encoder 编码 query 和 document：
+\(
+q(x)=\mathrm{BERT}_q(x),\quad d(z)=\mathrm{BERT}_d(z),
+\)
+并用 inner product 衡量相关性：
+\(
+p_\eta(z\mid x)\propto \exp(d(z)^\top q(x)).
+\)
+DPR 是 bi-encoder，因此 document embeddings 可以提前计算并建立 index；query 到来后只需编码 query 再进行 retrieval。MIPS = Maximum Inner Product Search，用于高效找到 inner product 最大的 top-\(K\) documents。
+
+\par \textbf{RAG Generator：}原始 RAG generator 使用 BART-large；给定 query \(x\) 和 retrieved document \(z\)，生成答案：
+\(
+p_\theta(y\mid x,z).
+\)
+Retriever 提供 external knowledge，generator 负责基于 query + document 做 conditional generation。
+
+\par \textbf{RAG as Latent-Variable Model：}训练数据只有 query-answer pairs \((x,y)\)，并不需要标注“哪个 document 是正确证据”；retrieved document \(z\) 被视为 latent variable，对不同 document 的生成概率进行 marginalization：
+\(
+p(y\mid x)=\sum_z p_\eta(z\mid x)p_\theta(y\mid x,z).
+\)
+因此 retriever 和 generator 可以通过最终 answer likelihood 联合学习。\textbf{RAG-Sequence：}假设同一个 latent document \(z\) 支撑整条 output sequence：
+\(
+p(y\mid x)=
+\sum_{z\in \mathrm{top}K}
+p_\eta(z\mid x)
+\prod_i p_\theta(y_i\mid x,z,y_{<i}).
+\)
+同一个 candidate document 在整条 sequence 内保持不变。
+\textbf{RAG-Token：}允许每个 generated token 从不同 retrieved documents 获得支持：
+\(
+p(y\mid x)=
+\prod_i
+\sum_{z\in \mathrm{top}K}
+p_\eta(z\mid x)
+p_\theta(y_i\mid x,z,y_{<i}).
+\)
+比 RAG-Sequence 更 flexible，因为不同 token 可以依赖不同 evidence。
+
+常见方案是
+\(
+\text{retrieve first}+\text{reason over retrieved text with long context}.
+\)
+RAG 的优势是减少 irrelevant context 和 context-window cost。
+
+\par \textbf{Toolformer：}让 LM 通过 self-supervised training 学会 \textit{which APIs to call, when to call them, what arguments to pass, and how to incorporate the results}；只需要每个 API 少量 demonstrations，然后由模型自动生成大量 tool-use examples。
+\textbf{Toolformer Training Pipeline：}
+\(
+\text{Sample API Calls}
+\rightarrow
+\text{Execute API Calls}
+\rightarrow
+\text{Filter Useful Calls}
+\rightarrow
+\text{Fine-tune LM}.
+\)
+模型先自己 propose potential calls，真正执行获得 tool results，再只保留能够提高后续 token prediction 的 calls，最后把它们插回 training corpus 进行普通 LM fine-tuning。
+
+\par \textbf{Toolformer API Representation：}一个 API call 表示为
+\(
+c=(a_c,i_c),
+\)
+其中 \(a_c\) 是 API name，\(i_c\) 是 input；linearized call：
+\(
+e(c)=\langle API\rangle a_c(i_c)\langle/API\rangle,
+\)
+带 result：
+\(
+e(c,r)=\langle API\rangle a_c(i_c)\rightarrow r\langle/API\rangle.
+\)
+tool call 和普通 text 一样被插入 token sequence 中.
+
+\par \textbf{Toolformer Call Sampling：}给定原始 text \(x=x_1,\ldots,x_n\)，模型在候选位置 \(i\) 判断是否开始生成 API call：
+\(
+p_i=p_M(\langle API\rangle\mid x_{1:i-1}).
+\)
+只在概率足够高的位置 sample candidate tool calls，因此“在哪里调用”和“调用什么”都由 LM 自己提出，而不是人工逐条标注。
+
+\par \textbf{Toolformer Filtering：}判断一个 tool call 是否有用的标准是：加入 tool result 后，模型预测后续 tokens 的 loss 是否明显下降。定义
+\(
+L_i(z)=-\sum_{j=i}^{n}w_{j-i}\log p_M(x_j\mid z,x_{1:j-1}).
+\)
+保留 API call 当
+\(
+L_i^- - L_i^+ \ge \tau_f,
+\)
+其中 \(L_i^+\) 是提供 API result 后的 loss，\(L_i^-\) 是不用有效 result 的 baseline；即keep a tool call if its result helps predict future tokens.
+
+\par \textbf{Toolformer Self-Supervision：}Toolformer 不需要人工标注“这个位置应该调用哪个 tool”；LM 先用少量 demonstrations 自动 annotate 大量文本，再用 future-token loss 判断 tool result 是否真正有用，因此 usefulness 本身成为 training signal。
+\textbf{Toolformer Limitation：}Toolformer 仍需要少量 examples 定义 API usage format，且主要研究 relatively simple textual API calls；API input/output 需要能表示成 text，它没有完整解决现代 long-horizon agent 所需的 planning、retry、permissions、memory、verification 等系统问题。
+
+\par \textbf{Agent：}与一次性的
+\(
+x\rightarrow \mathrm{LLM}\rightarrow y
+\)
+不同，agent 会在 environment 中反复采取 action 并读取 observation：
+\(
+s_t\rightarrow a_t\rightarrow o_t\rightarrow s_{t+1}.
+\)
+因此 agent 的输出会影响未来输入，是一个 feedback loop，而不是单次 inference。
+\textbf{ReAct：}ReAct = Reason + Act，将 reasoning traces 和 task-specific actions interleave：
+\(
+\text{Thought}\rightarrow\text{Action}\rightarrow\text{Observation}\rightarrow\text{Thought}\rightarrow\cdots
+\)
+Reason 决定“下一步做什么、为什么”；Act 调用 tool 或执行 action；Observe 读取结果，然后基于新 information 再 reasoning。
+\textbf{Why ReAct：}reasoning traces 可以帮助 agent induce, track, and update action plans、处理 exceptions；actions 则让模型从 external sources/environment 获得新的 information。reasoning guides actions; observations ground reasoning
+而不是纯粹依赖内部 reasoning 或盲目执行 actions。
+
+CoT 是 reason-only：可以进行 multi-step reasoning，但不能主动获得 external evidence，因此早期 hallucination 可能沿 reasoning chain 继续 propagate；ReAct 可以通过 search/tool observation 检查和修正 intermediate beliefs。Act-only 可以不断调用 tool/environment，但缺少显式 reasoning state，因此可能不知道下一步为什么要这样做、重复无效 actions 或 search wrong entity；ReAct 用 Thought 保存当前 subgoal、已知信息和下一步 plan。
+
+\par \textbf{ReAct Failure Modes：}Reasoning trace 本身仍可能 hallucinate；agent 也可能进入 repetitive action loops，例如重复同一个 search/action 却不改变策略。常见 harness-level mitigation 包括 step limit、loop detection、replanning、validation 和 stopping rule。
+
+\par \textbf{Harness：}agent harness 是围绕 LLM 的 execution/infrastructure layer，负责 context construction、tool interaction、orchestration、verification、retry、stopping 等：
+\(
+\text{Agent System}=\text{LLM}+\text{Harness}.
+\)
+同一个 model 使用不同 harness 时 performance 可能显著不同，因此 agent benchmark score 不是单纯的 model property。
+\textbf{Harness as Closed-Loop Controller：}把 agent 看成 closed-loop dynamical system：state \(s_t\) 包含 current context + persistent memory，LLM 是 stochastic policy
+\(
+\pi_\theta(a_t\mid s_t),
+\)
+生成 action \(a_t\)；tool/environment 返回 observation \(o_t\)，harness 再构造下一步 state。论文因此把 harness 视为 controller，而 model 只是被 controller 包围的 policy。
+\textbf{Harness Decisions：}每个 agent step 都包含 harness choices：task/system prompt 如何构造、tool catalogue 如何加入、tool call 如何 parse/execute、error 如何 retry、context 如何 compress、何时 stop/escalate。因此最终 benchmark score 是 model 与这些 harness choices 的 joint outcome。
+
+\par \textbf{Binding Constraint Thesis：}Harness paper 主张，在 long-horizon tasks、且比较 capability 相近的 frontier models 时，performance variance 可能更多来自 harness configuration 而不是 model choice；因此不 disclosure harness 的 cross-model leaderboard 可能把 harness-level improvement 错误归因于 model。
+\textbf{Locked-Harness Evaluation：}比较 models 时固定同一个 harness \(H\)：
+\(
+B(M_1,H),B(M_2,H),\ldots
+\)
+这样 model 是主要变化变量，可以更合理地 isolate model effect。
+
+\par \textbf{Factorial Evaluation：}同时系统改变 model \(M_i\) 和 harness \(H_j\)，评估
+\(
+B(M_i,H_j),
+\)
+从而把 performance variation 分解为 model effect、harness effect 和 model-harness interaction，而不是把所有 gain 都归给 model。
+
+\par \textbf{Harness Variance vs. Model Variance：}
+\(
+HV(M_i)=\mathrm{Var}_{H}[B(M_i,H)],
+\)
+衡量固定 model、改变 harness 时的 performance variance；
+\(
+MV(H_j)=\mathrm{Var}_{M}[B(M,H_j)],
+\)
+衡量固定 harness、改变 model 时的 variance。若
+\(
+HV\gg MV,
+\)
+说明当前 benchmark 更受 harness choice 影响。
+
+\par \textbf{Ranking Reversal：}若
+\(
+B(M_1,H_1)>B(M_2,H_1)
+\)
+但
+\(
+B(M_1,H_2)<B(M_2,H_2),
+\)
+则 model ranking 会因 harness 改变而反转，因此单独说“model \(M_1\) 比 \(M_2\) 强”并不充分，必须说明使用的 execution harness。
+\textbf{Context Management：}agent trajectory 很长时，harness 必须决定哪些旧信息保留、summarize、retrieve 或删除；不好的 context management 会导致 important constraints/files 从 effective context 中消失，即 context drift。
+\textbf{Retry / Recovery：}tool call 可能 timeout、格式错误或返回 invalid result；harness 需要定义 retry、fallback、replanning、checkpoint/rollback 等 recovery policy，否则 agent 容易在一次局部错误后不断累积错误。
+\textbf{Verification：}Harness 可以在 intermediate actions 或 final output 后运行 tests、schema validation、self-check 或 external verifier；verification 是 model 外部 reliability mechanism，不应该被误认为 model 本身能力。
+
+\par \textbf{Multi-Agent System：}把一个任务交给多个 agents，各自拥有 role/context，并通过 communication/orchestration 协作：
+\(
+\text{Task}\rightarrow A_1,\ldots,A_K\rightarrow\text{Aggregator/Synthesis}.
+\)
+优势包括 parallel exploration、task specialization、独立 context windows；代价包括更多 tokens、communication overhead、duplicate work、conflicting answers 和 error propagation。
+Multi-agent 的价值来自可以把相对独立的 subtasks 并行处理，然后 synthesis；如果任务高度 coupled、communication cost 很高或多个 agents 只是重复相同 reasoning，则
+\(
+\text{more agents}\not\Rightarrow\text{better performance}.
+\)
+
+\par \textbf{GPTSwarm：}把 LLM agent systems 表示为 \textbf{optimizable computational graphs}：nodes 表示 operations，edges 表示 information flow；不仅能优化 individual prompts，还可以通过改变 graph connectivity 自动优化 agent orchestration。
+\textbf{GPTSwarm Hierarchy：}
+Operation=Node,
+Agent=Graph of Nodes,
+Swarm=Composite Graph.
+Agent 内 edges 定义 execution topology；agents 之间 edges 定义 collaboration/communication channels。
+
+\par \textbf{GPTSwarm Graph Definition：}单个 agent 表示为 directed computational graph
+\(
+G=(N,E,F,o),
+\)
+其中 \(N\) 是 computational nodes，\(E\subseteq N\times N\) 是 directed edges，\(F=\{f_n\}_{n\in N}\) 是 node routines，\(o\) 是 output node；论文主要研究 DAG。Node 可以执行 LLM inference、tool use、function call 或 embodied action。
+\textbf{GPTSwarm Node Execution：}node \(n\) 接收原始 input \(x\) 和 predecessor outputs \(z_n\)，执行
+\(
+f_n(z_n,x),
+\)
+并把结果传给 successors；最终 graph output 为
+\(
+\hat y=G(x)=f_o(z_o,x).
+\)
+因此整个 agent workflow 可以理解为一个显式 dataflow graph。
+
+\par \textbf{GPTSwarm Composite Graph：}多个 agent graphs 通过 inter-agent edges 连接成 swarm；edge 不只是“两个 agent 可以聊天”，而是明确规定 information 从哪个 operation 流向哪个 operation，因此 communication topology 本身成为可以学习和优化的对象。
+
+\par \textbf{GPTSwarm Node Optimization：}修改单个 node 的 prompt/behavior，使 local operation 更有效，即
+\(
+\text{node optimization}=\text{optimize what each component does}.
+\)
+
+\par \textbf{GPTSwarm Edge Optimization：}改变 graph connectivity，即决定哪些 nodes/agents 应该交换 information：
+\text{edge optimization}=\text{optimize orchestration}.
+论文的核心区别是，不只手工设计 multi-agent workflow，而是允许 communication structure 自动改进。
+\textbf{GPTSwarm Edge Search：}若有 \(d\) 个 possible edges，则可能 graph 数量为
+\(
+2^d,
+\)
+无法 exhaustive search；因此定义 parameterized graph distribution
+\(
+G'\sim D_\theta
+\)
+并优化 expected task utility：
+\(
+\max_\theta
+\mathbb E_{G'\sim D_\theta}
+[u_\tau(G')].
+\)
+
+\par \textbf{REINFORCE for Graph Optimization：}因为 edge existence 和最终 task correctness 都是 discrete，不能直接普通 backprop；可以用 policy-gradient estimator：
+\(
+\nabla_\theta \mathbb E_{G\sim D_\theta}[u(G)]
+=
+\mathbb E[
+u(G)\nabla_\theta\log p_\theta(G)
+].
+\)
+高 reward graph 中出现的 communication structures 会被提高 probability，低 reward structures 则降低。
+
+\par \textbf{GPTSwarm vs. Free-form Multi-Agent Chat：}普通 multi-agent system 常由人手工设计谁和谁聊天；GPTSwarm 把 communication 显式变成 graph edges，因此 workflow 可组合、可观察、可优化。CoT、Tree-of-Thought、Reflexion 等也可以看成不同 computational graph/topology。
+
+\par \textbf{Function Calling：}开发者用 JSON Schema 描述可调用函数及参数，模型负责判断是否需要调用函数，并输出符合 function signature 的结构化 JSON arguments
+
+\par \textbf{Function Calling vs. Tool Execution：}模型输出的 function call 只是 structured action request，并不会自己真正执行函数；完整流程是
+\(
+\text{LLM}
+\rightarrow
+\text{tool call}
+\rightarrow
+\text{Harness executes tool}
+\rightarrow
+\text{tool result}
+\rightarrow
+\text{LLM}.
+\)
+因此 “模型会 function calling” 和 “整个 agent 能可靠使用 tool” 不是一回事，后者还依赖 routing、permissions、error handling、retry 和 result injection。
+
+\par \textbf{MCP (Model Context Protocol)：}Toolformer / LangChain-era 中，不同 framework 往往各自定义 tool description 和 calling protocol；MCP 将模型与 external tools / data sources 之间的接口标准化：
+\(
+\text{Model} \leftrightarrow \text{standard protocol} \leftrightarrow \text{Tools/Data Sources}.
+\)
+核心意义是让不同模型、client 和 tool servers 可以通过统一协议交互，而不需要每个 integration 都重新设计一套接口。
+
+\par \textbf{Context-Window Tax：}暴露给模型的每一个 tool definition 都需要作为 context 的一部分输入，因此会消耗 context tokens：
+\(
+\text{more tools}
+\Rightarrow
+\text{more tool-schema tokens in context}.
+\)
+小而稳定的 tool set 成本较低；large tool catalog 不仅增加 token/context cost，也可能因为候选工具过多而降低 tool-selection accuracy。因此“让模型看到更多 tools”不是免费的。
+
+\par \textbf{Stateful Session：}旧式 MCP design 中，每个 client 维持一个 live session，后续 request 依赖之前保存在某个 server instance 上的 session state；因此 load balancer 必须使用 sticky sessions，把同一 client 的后续 request 路由回原 server，或者所有 servers 使用 shared session store（如 Redis）。
+\textbf{Stateless Request：}July 2026 MCP revision 改为每个 request 都是 self-contained，会携带自己的 protocol version、client identity 和 capabilities，因此任何 server instance 都可以独立处理任意 request，不依赖某个长期保存的 per-client session。
+Stateful depends on server-side session state from previous requests
+而
+Stateless: each request contains enough information to be handled independently。
+Stateless 的代价是需要在 request 中携带必要 metadata/context，但 infrastructure 更容易 horizontal scaling。
+
+\par \textbf{Why Stateless Helps Load Balancing：}Stateful service 需要
+\(
+\text{client}\rightarrow\text{same server instance}
+\)
+的 sticky routing，或者额外维护 shared session store；stateless service 则可以让普通 round-robin load balancer 把任意 request 发送给任意 healthy server：
+\(
+R_1\rightarrow S_2,\quad
+R_2\rightarrow S_5,\quad
+R_3\rightarrow S_1.
+\)
+因此 server instances 更 interchangeable，扩容、缩容和故障恢复更简单。
+
+\par \textbf{Why Stateless Helps Serverless：}Lambda、Cloudflare Workers 等 serverless infrastructure 不保证两次 requests 会落到同一个 persistent process，因此不适合依赖 local in-memory session state；stateless request 不依赖某个固定 server instance，所以可以自然地 scale up/down，并且不需要维护 shared session state。Slides 总结为：可以放在普通 round-robin load balancer 后面，也可以直接运行在 serverless infrastructure 上。
+
+\par \textbf{Tool Schema Design：}tool schema 本身也是 harness design 的一部分；minimal schema 减少 context-window tax，但信息太少可能让模型不知道何时或如何调用；verbose schema 提供更多 guidance，却增加 context cost 和 ambiguity，因此需要在 \textbf{clarity vs. context cost} 之间权衡。
+
+\topic{More}
+Convolution 输出尺寸：
+H\_out = floor((H + 2P - D(K-1) - 1)/S) + 1
+
+Binary cross-entropy：
+BCE = -[y log p + (1-y) log(1-p)]
+
+\par \textbf{Why Not Single-Stream in ViLBERT：}一个直接方案是把 visual inputs discretize 成 visual tokens，与 text tokens 一起送进同一个 pretrained BERT；ViLBERT 指出三点问题：
+(1) visual clustering / discretization 会引入 discretization error，丢失重要 visual details；
+(2) image 与 language 被完全相同地处理，但两种 modality 的 complexity 和 input abstraction level 不同，因此可能需要不同 processing depth；
+(3) 强迫 pretrained BERT weights 同时适应大量新的 visual tokens，可能破坏原本已经学好的 language representations。
+因此 ViLBERT 使用 two-stream architecture，让 vision / language 分别处理，再通过少量 co-attention layers 交互。
+
+\par \textbf{Another Single-Stream Cost：}single-stream 中 image 和 text 从很早开始一直交互，因此不能独立 cache 某一 modality 的 representations；ViLBERT 论文因此指出这种 architecture 在 image retrieval 等需要重复比较大量 image/text pairs 的任务上 computational cost 很高。
+
+\par \textbf{Q-Former：}使用一组 learned query tokens，对 frozen vision encoder（如 CLIP / ViT）输出的 image features 做 cross-attention：
+\(
+Q=Q_{\mathrm{learned}},
+K,V=\mathrm{VisionEncoder}(x).
+\)
+learned queries 主动从大量 visual features 中提取 task-relevant information，最后得到一个 compact image representation，作为 vision 与 language model 之间的 bridge。
+
+\par \textbf{Why Q-Former：}vision encoder 往往输出很多 image patch / region features，而 LLM 不需要直接处理全部视觉 tokens；Q-Former 用少量 learned queries 抽取最有用的信息，因此既完成 visual-language alignment，又减少送入 LLM 的 token 数量。
+
+\par \textbf{Q-Former Three Pretraining Objectives：}
+(1) \textbf{Image-Text Matching (ITM)：}判断 image 和 text 是否对应；
+(2) \textbf{Image-Text Contrastive Learning (ITC)：}让 matching image/text representations 靠近、non-matching pairs 远离；
+(3) \textbf{Image-Grounded Text Generation：}根据 extracted image features condition text generation。
+这三个 objectives 分别学习 matching、alignment 和 generation 能力。
+\textbf{BLIP-2 Q-Former Bridge：}BLIP-2 先使用 frozen vision encoder 提取 image features，再通过 Q-Former 将 visual information 压缩成少量 representations，最后通过 projection / adapter ``glue'' 到 frozen LLM；这样不必 end-to-end retrain 巨大的 vision encoder 和 LLM。
+
+\par \textbf{Q-Former vs Resampler：}二者都使用 learned queries + cross-attention 压缩 visual features，但重点不同：Q-Former 主要为 vision-language alignment 提取 task-relevant visual representation；Resampler 更强调把 variable-length visual embeddings 压缩成固定数量 tokens，以控制 LLM input size 和 computational cost。
+\par \textbf{Resampler：}给定任意数量的 visual embeddings，通过固定数量 learned latent queries 做 cross-attention，输出 fixed-size token set；因此无论原图产生多少 patches / frames，送入 multimodal Transformer 的视觉 token 数量都保持固定。
+
+\par \textbf{Early Fusion：}vision / text 在进入主要 Transformer self-attention 之前就已经被转换到统一 token / representation space，并在同一个 backbone 中 jointly processed；slides 中区分 Non-Tokenized Early Fusion (NTEF) 和 Tokenized Early Fusion (TEF)。
+\textbf{Deep Fusion：}vision 与 language 先各自进行一定程度 processing，再在 Transformer 中间层通过 cross-attention 或 custom multimodal layers 反复融合；slides 将其分为 Standard Cross-attention based Deep Fusion (SCDF) 与 Custom Layer based Deep Fusion (CLDF)。
+\textbf{Modern Fusion Trend：}slides 将 CLIP 归为 late fusion、ViLBERT 视为中间层 co-attention fusion；现代大型 multimodal LLM 更常采用 early fusion，把 image/video/text tokens 尽早放入同一 Transformer backbone，但 Q-Former / bridge-style deep fusion 仍常见于较便宜或 modular 的模型。
+
+\par \textbf{LDM Text-to-Image Training：}给 training pair \((x,y)\)，其中 \(x\) 是 image、\(y\) 是 text prompt：
+(1) encode image：
+\(
+z_0=E(x);
+\)
+(2) sample timestep \(t\)；
+(3) sample Gaussian noise：
+\(
+\epsilon\sim\mathcal N(0,I);
+\)
+(4) 构造 noisy latent：
+\(
+z_t=\sqrt{\bar\alpha_t}z_0+
+\sqrt{1-\bar\alpha_t}\epsilon;
+\)
+(5) encode text：
+\(
+c=\tau_\theta(y);
+\)
+(6) U-Net 根据 noisy latent、timestep 和 text condition 预测 noise：
+\(
+\hat\epsilon=\epsilon_\theta(z_t,t,c);
+\)
+(7) 使用 noise-prediction MSE：
+\(
+L=
+\|\epsilon-\hat\epsilon\|_2^2;
+\)
+(8) gradient descent 更新 denoising model。一次 training iteration 只随机训练一个 timestep，不需要完整执行 \(z_T\rightarrow\cdots\rightarrow z_0\)。
+
+\par \textbf{LDM Text-to-Image Generation：}给定 prompt \(y\)：
+(1) encode text：
+\(
+c=\tau_\theta(y);
+\)
+(2) 从 pure Gaussian latent 开始：
+\(
+z_T\sim\mathcal N(0,I);
+\)
+(3) 对 \(t=T,\ldots,1\)，U-Net repeatedly predicts noise
+\(
+\hat\epsilon_t=\epsilon_\theta(z_t,t,c)
+\)
+并更新
+\(
+z_t\rightarrow z_{t-1};
+\)
+(4) 最终得到 clean latent \(z_0\)；
+(5) decoder 只在最后执行一次：
+\(
+x=D(z_0).
+\)
+训练时从真实 image latent 加 noise；生成时没有原图，而是从 random noise 反向 denoise。
+
+\par \textbf{DDPM：}Denoising Diffusion Probabilistic Model；forward process：
+\(
+x_t=
+\sqrt{\bar\alpha_t}x_0+
+\sqrt{1-\bar\alpha_t}\epsilon,
+\qquad
+\epsilon\sim\mathcal N(0,I).
+\)
+reverse process 是 stochastic：
+\(
+x_{t-1}
+=
+\mu_\theta(x_t,t)
++
+\sigma_t\epsilon',
+\qquad
+\epsilon'\sim\mathcal N(0,I).
+\)
+因此即使从同一个 \(x_t\) 和 condition 开始，只要 reverse sampling noise 不同，最后生成的 image 也可能不同。
+
+\par \textbf{Why DDPM Is Probabilistic：}reverse transition 建模为 distribution
+\(
+p_\theta(x_{t-1}\mid x_t),
+\)
+每一步不仅使用 model prediction，还额外 sample random Gaussian noise，因此 generation 是 stochastic trajectory。
+
+\par \textbf{DDIM：}Denoising Diffusion Implicit Model；使用与 DDPM 相同或兼容的 trained noise predictor，但改变 sampling update，使 reverse process 可以减少甚至去掉额外随机 noise；一般形式可理解为
+\(
+x_{t-1}
+=
+\text{predicted clean-image component}
++
+\text{predicted noise direction}
++
+\sigma_t\epsilon.
+\)
+当 \(\sigma_t=0\) 时，sampling trajectory 可以变成 deterministic。
+
+\par \textbf{DDPM vs DDIM：}DDPM reverse step 显式重新 sample noise，因此 stochastic；DDIM 可以令 reverse update deterministic，因此同一个 initial \(x_T\) + condition 会得到相同 output，并允许跳过部分 timesteps，从而通常可以用更少 sampling steps、生成更快。
+
+\par \textbf{DDIM Inversion：}因为 deterministic DDIM 可以建立近似可逆 trajectory，可以把真实 image \(x_0\) 沿 deterministic path 映射到某个 noisy latent \(x_T\)，之后再从该 latent 反向 generation；这对 image editing / semantic manipulation 很有用，因为可以尽量保留原图 structure。
+
+\par \textbf{Why DALL-E 2 Prior Is a Distribution：}给定同一个 caption \(y\)，可能存在很多不同但都合理的 images，因此 prior 不应该学 deterministic mapping
+\(
+y\rightarrow z_i,
+\)
+而应学习
+\(
+P(z_i\mid y),
+\)
+即从 text condition 产生一个 distribution over possible CLIP image embeddings；semantic diversity 很大程度来自这个 \(z_i\) distribution。
+
+\par \textbf{Autoregressive Prior in DALL-E 2：}CLIP image embedding 本来是 continuous vector；autoregressive prior 先通过 PCA 降维，再将各 dimensions quantize 成 discrete tokens
+\(
+(c_1,c_2,\ldots,c_m),
+\)
+然后 Transformer autoregressively 建模
+\(
+P(c_1,\ldots,c_m\mid y)
+=
+\prod_jP(c_j\mid c_{<j},y).
+\)
+
+\par \textbf{Diffusion Prior in DALL-E 2：}直接把 CLIP image embedding \(z_i\) 当作 continuous data，在 embedding space 中加入 Gaussian noise：
+\(
+z_i\rightarrow z_i^{(1)}\rightarrow\cdots\rightarrow z_i^{(T)},
+\)
+再训练 Transformer-style diffusion model conditioned on text 来恢复 clean image embedding；本质是 ``diffusion in CLIP embedding space''，而不是 pixel diffusion。
+
+\par \textbf{DALL-E 2 Two Sources of Diversity：}第一层 diversity 来自 prior：
+\(
+y\rightarrow z_i^{(1)},z_i^{(2)},\ldots
+\)
+同一个 prompt 可以得到不同 semantic interpretations；第二层 diversity 来自 decoder：
+\(
+z_i\rightarrow x^{(1)},x^{(2)},\ldots
+\)
+同一个 CLIP image embedding 又可以对应多张 pixel-level details 不同的 images。
+
+\par \textbf{DALL-E 2 Decoder Resolution：}diffusion decoder 不是直接生成 \(1024\times1024\) image，而是先生成 \(64\times64\)，再用两个 diffusion upsamplers：
+\(
+64\times64
+\rightarrow
+256\times256
+\rightarrow
+1024\times1024.
+\)
+upsamplers 在已有低分辨率 semantic structure 基础上补充 high-frequency / spatial details，而不是重新决定主要 semantic content。
+
+\par \textbf{CLIP Bottleneck in DALL-E 2：}DALL-E 2 generation 必须经过 CLIP image embedding \(z_i\)，因此 decoder 只能恢复 \(z_i\) 中保留下来的 information；如果 CLIP embedding 忽略某种细节，该信息在后续 decoder 中很难被准确恢复。
+
+\par \textbf{Attribute Binding Limitation：}CLIP 更擅长表示整体 semantic similarity，但可能不能准确保存 ``哪个 attribute 属于哪个 object''，例如 ``red cube and blue sphere'' 可能混淆颜色与对象绑定，因此 DALL-E 2 也继承这种 attribute-binding weakness。
+
+\par \textbf{Text / Spelling Limitation：}CLIP embedding 主要保存 high-level semantics，而不是精确 character-level spelling information，因此基于 CLIP latent 的 generation 对图片中的精确文字生成较弱。
+
+\par \textbf{CLIP Compression Trade-off：}CLIP image embedding 是强 semantic bottleneck：优点是丢掉 irrelevant pixel details，使 image variation / semantic manipulation 更容易；缺点是被压掉的信息之后无法可靠重建。
+
+% --- COLUMN 3 ---
+
+\end{multicols}
+\end{document}
